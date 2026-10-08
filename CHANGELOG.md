@@ -16,6 +16,10 @@
 - GitHub Pages publication through Actions, gated on the test job.
 
 ### Changed
+- The page opens in study mode. `?study=0` opts out, mirroring `?sankey=0`.
+- One load path, `useDump`, shared by the case picker, `open case…` and drop. Dropping
+  a case dump now loads its layout too, which it previously skipped.
+
 - The picture and the solver are built from one case dump. `index.html` had its own
   matpower parser and had to mirror `PGLibtograph`'s parallel-branch collapse to keep
   the two agreeing; there is now one graph.
@@ -23,6 +27,12 @@
 - `open case…` takes a case dump from disk, where the old file input took a `.m` file.
 
 ### Fixed
+- Switching cases kept the previous `outname`, so the previous case's layout was
+  applied to the new network. `applyCSV` skips bus ids it does not recognise, so this
+  was silent: the overlapping ids were placed and the rest left where the spring
+  layout had put them. `outname` now follows the case whenever the case changes, and
+  is left alone when the same case is re-loaded so a variant name survives.
+
 - Third-party licensing in `vendor/`. The esbuild bundle of `@powsybl/sankey` carried
   no copyright or licence notice at all: `--legal-comments=inline` keeps only comments
   tagged `@license` or `@preserve`, and PowSyBl's header is a plain `/** */` block, so

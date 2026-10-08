@@ -110,7 +110,7 @@
   <input type="number" id="boxsize" value="10" step="1" style="width:52px">
   <button id="fit">fit view</button>
   <span class="sep"></span>
-  <label><input type="checkbox" id="study"> <b>study</b></label>
+  <label><input type="checkbox" id="study" checked> <b>study</b></label>
   <label class="st">w0 <input type="number" id="w0" value="0.3" step="0.1" style="width:48px"></label>
   <label class="st">k <input type="number" id="wk" value="8" step="1" style="width:48px"></label>
   <label class="st" title="largest bus radius in px">bus
@@ -824,13 +824,28 @@ function report() {
 /* ---------------- wiring ---------------- */
 const guess = n => n.replace(/_ieee$/i,'_IEEE').replace(/^case(\d+)_IEEE$/,'case$1_IEEE');
 let CASES = [];
-async function loadCase(name) {
-  const c = CASES.find(x => x.name === name);
-  buildDump(await files.fetchJSON('cases/' + (c ? c.file : name + '.json')), name);
-  if (!$('outname').value) $('outname').value = guess(name);
+
+/* Everything that happens once a dump is in hand, wherever it came from: the
+   picker, a file from disk, or a drop.
+
+   outname decides which layout is read and written, so it follows the case
+   whenever the case changes — otherwise switching cases keeps the previous
+   name and applyCSV, which skips bus ids it does not recognise, quietly lays
+   out the overlapping ids and leaves the rest where the spring layout put
+   them. It is left alone when the same case is re-loaded, so a deliberate
+   variant name (case118-NH) survives pressing load again. */
+async function useDump(dump, name) {
+  const prev = S.name;
+  buildDump(dump, name);
+  if (name !== prev || !$('outname').value) $('outname').value = guess(name);
   await tryCoords();
   solve();
   await runSA();
+}
+
+async function loadCase(name) {
+  const c = CASES.find(x => x.name === name);
+  await useDump(await files.fetchJSON('cases/' + (c ? c.file : name + '.json')), name);
 }
 async function tryCoords() {
   const out = $('outname').value.trim(); if (!out) return;
@@ -864,12 +879,7 @@ $('opencase').onclick = async () => {
   try {
     const f = await files.openLocalFile('.json');
     if (!f) return;
-    const name = f.name.replace(/\.json$/i, '');
-    buildDump(JSON.parse(f.text), name);
-    if (!$('outname').value) $('outname').value = guess(name);
-    await tryCoords();
-    solve();
-    await runSA();
+    await useDump(JSON.parse(f.text), f.name.replace(/\.json$/i, ''));
   } catch (e) { say('ERROR ' + e.message); }
 };
 $('load').onclick = () => loadCase($('case').value).catch(e => say('ERROR ' + e.message));
@@ -916,8 +926,7 @@ document.addEventListener('drop', e => {
         const n = applyCSV(r.result); fitView();
         say('loaded ' + n + ' coords from ' + f.name);
       } else {
-        buildDump(JSON.parse(r.result), f.name.replace(/\.json$/i, ''));
-        solve(); await runSA();
+        await useDump(JSON.parse(r.result), f.name.replace(/\.json$/i, ''));
       }
     } catch(err) { say('ERROR ' + err.message); }
   };
@@ -935,7 +944,7 @@ document.addEventListener('drop', e => {
     csel.appendChild(o);
   }
   const q = new URLSearchParams(location.search);
-  if (q.get('study')) $('study').checked = true;
+  if (q.get('study') === '0') $('study').checked = false;   // on unless turned off
   if (q.get('sankey') === '0') $('skshow').checked = false;
   syncMode();
   if (q.get('open')) for (const k of q.get('open').split(',')) S0open.push(k);

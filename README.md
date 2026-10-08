@@ -34,7 +34,8 @@ because the page fetches its cases:
 python3 -m http.server 8123      # then http://localhost:8123
 ```
 
-The URL takes `?case=case118&study=1&open=24-25,35-36&cont=8-9&sankey=0` to reproduce
+The page opens in study mode. The URL takes
+`?case=case118&study=0&open=24-25,35-36&cont=8-9&sankey=0` to reproduce
 a situation, which is handy for sharing or for a screenshot — for instance
 [case57 with two branches out and 8-9 as the contingency](https://benoitjeanson.github.io/gridview/?case=case57_ieee&study=1&open=24-25,35-36&cont=8-9).
 
@@ -60,7 +61,8 @@ works too: a `.csv` is read as coordinates, a `.json` as a case.
 
 ## Edit mode — placing buses
 
-Pick a case, hit **load network**. A spring layout runs for cases up to 600 buses;
+Untick **study** to get here. Pick a case, hit **load network**. A spring layout
+runs for cases up to 600 buses;
 if a coordinate file already exists for the name in the **outname** box it is loaded
 on top instead.
 
@@ -89,7 +91,8 @@ prefer role or voltage colouring in study mode if that matters to you.
 
 ## Study mode — flows, contingencies, security
 
-Tick **study**. The layout freezes and the network becomes a flow diagram.
+Study mode is where the page opens; untick **study** to go back to placing buses.
+In it the layout freezes and the network becomes a flow diagram.
 
 - **click a branch** to open/close it — this is the *topology*, drawn bold black
 - **shift+click** to view it as a *contingency* — dashed bold black; several may be
