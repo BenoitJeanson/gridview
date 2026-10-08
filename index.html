@@ -91,7 +91,6 @@
 <script src="vendor/powsybl-sankey.js"></script>
 <div id="bar">
   <select id="case" style="max-width:230px"></select>
-  <button id="load">load network</button>
   <button id="opencase" title="open a case dump from disk, or drop one anywhere">open case…</button>
   <label>colour <select id="colorby">
     <option value="role">role</option>
@@ -882,7 +881,7 @@ $('opencase').onclick = async () => {
     await useDump(JSON.parse(f.text), f.name.replace(/\.json$/i, ''));
   } catch (e) { say('ERROR ' + e.message); }
 };
-$('load').onclick = () => loadCase($('case').value).catch(e => say('ERROR ' + e.message));
+$('case').onchange = () => loadCase($('case').value).catch(e => say('ERROR ' + e.message));
 $('reload').onclick = () => tryCoords().catch(e => say('ERROR ' + e.message));
 $('fr').onclick = () => { pushUndo(); layoutFR($('warm').checked); fitView(); };
 $('circle').onclick = () => { pushUndo(); layoutCircle(); fitView(); };

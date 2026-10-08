@@ -61,8 +61,8 @@ works too: a `.csv` is read as coordinates, a `.json` as a case.
 
 ## Edit mode — placing buses
 
-Untick **study** to get here. Pick a case, hit **load network**. A spring layout
-runs for cases up to 600 buses;
+Untick **study** to get here. Picking a case in the dropdown loads it. A spring
+layout runs for cases up to 600 buses;
 if a coordinate file already exists for the name in the **outname** box it is loaded
 on top instead.
 

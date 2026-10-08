@@ -16,6 +16,7 @@
 - GitHub Pages publication through Actions, gated on the test job.
 
 ### Changed
+- Picking a case in the dropdown loads it; the `load network` button is gone.
 - The page opens in study mode. `?study=0` opts out, mirroring `?sankey=0`.
 - One load path, `useDump`, shared by the case picker, `open case…` and drop. Dropping
   a case dump now loads its layout too, which it previously skipped.
