@@ -19,8 +19,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       # pins src/pf.js to the output recorded from the Julia-validated pf.py
@@ -34,7 +34,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # the two listings stand in for the directory listing a static host has
       # no way to give; regenerating them here means they cannot go stale
       - run: python3 tools/make_index.py
@@ -43,7 +43,11 @@ jobs:
           mkdir _site
           cp index.html _site/
           cp -r src cases coord vendor _site/
+      # enablement turns Pages on for the repo if it is off, so a fresh clone
+      # or fork publishes without anyone visiting Settings first
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
