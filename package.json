@@ -1,0 +1,12 @@
+{
+  "name": "gridview",
+  "version": "0.1.0",
+  "description": "An interactive DC power-flow bench for TNROpt cases, in the browser",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/pf.test.mjs",
+    "serve": "python3 -m http.server 8123"
+  },
+  "license": "MIT"
+}

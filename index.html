@@ -1,0 +1,957 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>bus coordinate editor</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font:13px/1.4 -apple-system, Helvetica, Arial, sans-serif; color:#222; }
+  #bar { padding:6px 8px; background:#f2f2f2; border-bottom:1px solid #ccc;
+         display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  #bar .sep { width:1px; height:22px; background:#ccc; margin:0 4px; }
+  button { padding:3px 8px; font-size:12px; }
+  input[type=text], input[type=number], select { padding:2px 4px; font-size:12px; }
+  label { font-size:12px; user-select:none; }
+  #status { padding:3px 8px; background:#fafafa; border-bottom:1px solid #ddd;
+            font:11px/1.5 ui-monospace, Menlo, monospace; color:#555; white-space:pre; overflow:hidden; }
+  #main { display:flex; height:calc(100vh - 68px); }
+  #svg { display:block; flex:1; height:100%; background:#fff; cursor:default; }
+  #sa { display:none; flex-direction:column; width:430px; flex:none;
+        border-left:1px solid #ccc; background:#fafafa; }
+  body.study.table #sa { display:flex; }
+  #sahead { padding:6px 8px; border-bottom:1px solid #ccc; font-size:12px; }
+  #sainfo { color:#52514e; font:11px/1.5 ui-monospace, Menlo, monospace; margin-top:3px;
+            white-space:pre; }
+  #sainfo b { color:#0b0b0b; font-weight:600; }
+  #sabody { flex:1; overflow:auto; }
+  #sabody table { border-collapse:collapse; width:100%;
+                  font:11px ui-monospace, Menlo, monospace; }
+  #sabody th { position:sticky; top:0; background:#eee; padding:3px 5px; text-align:right;
+               border-bottom:1px solid #ccc; font-weight:600; }
+  #sabody td { padding:2px 5px; text-align:right; border-bottom:1px solid #eee;
+               white-space:nowrap; }
+  #sabody th:nth-child(-n+2), #sabody td:nth-child(-n+2) { text-align:left; }
+  #sabody tr.over td { color:#c00000; }
+  #sabody tbody tr:hover { background:#eaf1fb; cursor:pointer; }
+  #sabody tr.active { background:#fff0c2; }
+  #sabody tr.active td:first-child { font-weight:700; }
+  .grip { display:none; width:6px; flex:none; cursor:col-resize; background:#e9e9e6;
+          border-left:1px solid #d4d4d0; }
+  .grip:hover, .grip.drag { background:#b9cbe8; }
+  body.study.table .grip[data-for="sa"] { display:block; }
+  body.study.sankey .grip[data-for="sk"] { display:block; }
+  #sahead .x, #skhead .x { float:right; border:none; background:none; cursor:pointer;
+                           font-size:15px; line-height:1; color:#777; padding:0 2px; }
+  #sahead .x:hover, #skhead .x:hover { color:#000; }
+  #sk { display:none; flex-direction:column; width:420px; flex:none;
+        border-left:1px solid #ccc; background:#fafafa; }
+  body.study.sankey #sk { display:flex; }
+  #skhead { padding:6px 8px; border-bottom:1px solid #ccc; font-size:12px; }
+  #skhead .n { color:#52514e; font-size:11px; }
+  #skhead .row { display:flex; gap:8px; align-items:center; margin-top:4px; font-size:11px; }
+  #skhead input[type=range] { width:110px; vertical-align:middle; }
+  #skbox { flex:1; overflow:hidden; background:#fff; }
+  #skbox svg { width:100%; height:100%; display:block; }
+  #legend svg { display:block; width:14px; height:14px; background:none; flex:none; }
+  .edge { stroke:#8a97a8; stroke-width:1.4; }
+  .edge.xf { stroke:#c07000; stroke-dasharray:5 3; }
+  .edge.flow { stroke:#00a000; }
+  .edge.over { stroke:#e00000; }
+  .edge.dead { stroke:#000; }
+  .edge.open { stroke:#000; stroke-dasharray:none; }
+  .edge.ctg  { stroke:#000; stroke-dasharray:8 4; }
+  .hit { stroke:rgba(0,0,0,0); fill:none; stroke-width:14; pointer-events:none; }
+  body.study .hit { pointer-events:stroke; cursor:pointer; }
+  body.study .node { cursor:default; }
+  .flab { font:10px ui-monospace, Menlo, monospace; fill:#111; pointer-events:none;
+          text-anchor:middle; paint-order:stroke; stroke:#fff; stroke-width:3px;
+          stroke-linejoin:round; }
+  .st { display:none; }
+  body.study .st { display:inline; }
+  body.study .noStudy { opacity:.35; pointer-events:none; }
+  .node { stroke:#333; stroke-width:1; cursor:grab; }
+  .node.sel { stroke:#e00; stroke-width:2.5; }
+  .lbl { font:10px ui-monospace, Menlo, monospace; fill:#111; pointer-events:none;
+         paint-order:stroke; stroke:#fff; stroke-width:2.5px; stroke-linejoin:round; }
+  .grid { stroke:#e8e8e8; stroke-width:1; }
+  .axis { stroke:#cfcfcf; stroke-width:1; }
+  #band { fill:rgba(220,0,0,.08); stroke:#e00; stroke-dasharray:3 3; }
+  #legend { position:absolute; left:10px; bottom:10px; background:rgba(252,252,251,.94);
+            border:1px solid #d8d8d4; border-radius:4px; padding:6px 9px; pointer-events:none;
+            font:11px/1.6 -apple-system, Helvetica, Arial, sans-serif; color:#0b0b0b; }
+  #legend .t { color:#52514e; font-size:10px; text-transform:uppercase; letter-spacing:.04em;
+               margin-bottom:3px; }
+  #legend .r { display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  #legend .r span { color:#0b0b0b; }
+  #legend .n { color:#52514e; }
+</style>
+</head>
+<body>
+
+<script src="vendor/powsybl-sankey.js"></script>
+<div id="bar">
+  <select id="case" style="max-width:230px"></select>
+  <button id="load">load network</button>
+  <button id="opencase" title="open a case dump from disk, or drop one anywhere">open case…</button>
+  <label>colour <select id="colorby">
+    <option value="role">role</option>
+    <option value="volt">voltage</option>
+    <option value="group">group</option>
+  </select></label>
+  <span class="sep"></span>
+  <button class="noStudy" id="fr">spring layout</button>
+  <button class="noStudy" id="circle">circle</button>
+  <button class="noStudy" id="rand">random</button>
+  <label><input type="checkbox" id="warm" checked> from current</label>
+  <span class="sep"></span>
+  <label><input type="checkbox" id="snap"> snap</label>
+  <input type="number" id="step" value="1" step="0.1" style="width:52px">
+  <button class="noStudy" id="normalize">fit to box</button>
+  <input type="number" id="boxsize" value="10" step="1" style="width:52px">
+  <button id="fit">fit view</button>
+  <span class="sep"></span>
+  <label><input type="checkbox" id="study"> <b>study</b></label>
+  <label class="st">w0 <input type="number" id="w0" value="0.3" step="0.1" style="width:48px"></label>
+  <label class="st">k <input type="number" id="wk" value="8" step="1" style="width:48px"></label>
+  <label class="st" title="largest bus radius in px">bus
+    <input type="number" id="bus" value="14" step="1" style="width:48px"></label>
+  <label class="st" title="thermal limit factor — create_case's ratio, scales every p_max">TLF
+    <input type="number" id="tlf" value="1" step="0.1" min="0.1" style="width:52px"></label>
+  <button class="st" id="closeall">close all branches</button>
+  <label class="st"><input type="checkbox" id="tabshow" checked> table</label>
+  <label class="st"><input type="checkbox" id="skshow" checked> sankey</label>
+  <span class="sep"></span>
+  <input type="text" id="outname" placeholder="case57_IEEE" style="width:130px">
+  <button id="reload">reload csv</button>
+  <button id="save"><b>save csv</b></button>
+  <button id="dl">download</button>
+  <button id="pickdir" title="write save csv straight into a folder on disk">folder…</button>
+  <span id="dirname" class="n"></span>
+  <span id="coordinfo" class="n"></span>
+</div>
+<div id="status">no network loaded</div>
+<div id="main">
+  <svg id="svg"></svg>
+  <div class="grip" data-for="sa" title="drag to resize"></div>
+  <aside id="sa">
+    <div id="sahead">
+      <button class="x" id="saclose" title="hide this panel">&times;</button>
+      <b>N&minus;1 security analysis</b> &middot; on the applied topology only
+      &nbsp;trigger <input type="number" id="trig" value="95" step="1" style="width:52px">%
+      <div id="sainfo">&mdash;</div>
+    </div>
+    <div id="sabody"><table>
+      <thead><tr><th>ctg</th><th>branch</th><th>base</th><th>ctg flow</th>
+                 <th>load</th><th>ctg/base</th></tr></thead>
+      <tbody></tbody></table></div>
+  </aside>
+  <div class="grip" data-for="sk" title="drag to resize"></div>
+  <aside id="sk">
+    <div id="skhead">
+      <button class="x" id="skclose" title="hide this panel">&times;</button>
+      <b>Sankey</b> <span class="n">powsybl-sankey · displayed case</span>
+      <div class="row">
+        <label>orient <select id="skor">
+          <option value="vertical">vertical</option>
+          <option value="horizontal">horizontal</option>
+        </select></label>
+        <button id="skauto">autoscale</button>
+        <button id="skrun">freeze</button>
+      </div>
+      <div class="row">
+        <label>stretch <input type="range" id="skstretch" min="0.1" max="10" step="0.1" value="1"></label>
+      </div>
+      <div class="row">
+        <label>align <input type="range" id="skalign" min="0" max="10" step="0.1" value="5"></label>
+        <label>repulse <input type="range" id="skrepulse" min="0" max="10" step="0.1" value="5"></label>
+      </div>
+    </div>
+    <div id="skbox"></div>
+  </aside>
+</div>
+<div id="legend"></div>
+
+<script type="module">
+import { Net, pfResult, saResult } from './src/pf.js';
+import * as files from './src/files.js';
+
+const $ = id => document.getElementById(id);
+/* Palettes below are validated with the dataviz skill's validator (light surface
+   #fcfcfb, --pairs all), not chosen by eye. Bus-number labels are always drawn,
+   which supplies the direct-label relief the low-contrast slots require. */
+const ROLE = { slack:'#e34948', gen:'#eda100', load:'#2a78d6', none:'#bbbbb8' };
+const RAMP = ['#86b6ef','#5598e7','#2a78d6','#1c5cab','#104281'];   // ordinal, 1 hue
+const CAT  = ['#2a78d6','#1baf7a','#eda100','#008300','#4a3aa7','#e34948'];
+const SHAPES = ['circle','square','triangle','diamond','pentagon','hexagon'];
+const OTHER = '#bbbbb8';
+const svg = $('svg'), NS = 'http://www.w3.org/2000/svg';
+let S = { name:'', buses:[], edges:[], by:new Map() };   // model, world coords (y up)
+let view = { k:40, tx:0, ty:0 };
+let sel = new Set(), undoStack = [];
+let els = { grid:null, edges:[], hits:[], arrows:[], flabs:[], nodes:[], labels:[] };
+const studying = () => $('study').checked;
+const S0open = [], S0cont = [];            // ?open=…&cont=… for a preset situation
+const ekey = e => Math.min(e.f,e.t) + '-' + Math.max(e.f,e.t);
+
+const say = m => $('status').textContent = m;
+const fld = (id, dflt) => {                 // tolerate a decimal comma
+  const x = parseFloat(String($(id).value).replace(',', '.'));
+  return isFinite(x) ? x : dflt;
+};
+const size = () => { const r = svg.getBoundingClientRect();
+                     return { w: r.width || window.innerWidth,
+                              h: r.height || window.innerHeight - 68 }; };
+const X = wx => wx*view.k + view.tx;
+const Y = wy => -wy*view.k + view.ty;
+const wX = sx => (sx - view.tx)/view.k;
+const wY = sy => -(sy - view.ty)/view.k;
+
+/* ---------------- the case dump ---------------- */
+/* Dump labels are usually the bus number; case14 uses letters (A = 1). */
+const busnum = l => /^-?\d+$/.test(String(l)) ? parseInt(l, 10) : String(l).charCodeAt(0) - 64;
+
+/* Build both the picture and the solver from one cases/<name>.json.
+   coordedit built them separately — the picture from the pglib .m file, the
+   numbers from the dump — and had to mirror PGLibtograph's parallel-branch
+   collapse in two places to keep them agreeing. Here there is one graph. */
+function buildDump(dump, name) {
+  if (!dump || !dump.p || !dump.edges) throw new Error('not a case dump (no p / edges)');
+  const disp = dump.display || null;
+  const buses = Object.keys(dump.p).map(k => {
+    const d = (disp && disp.buses[k]) || null;
+    return {
+      id: busnum(k), label: k, x: 0, y: 0,
+      /* type 3 is matpower's reference bus, which is what coordedit drew; the
+         slack create_case chose is dump.slack and need not be the same bus. */
+      type: d ? (d.ref ? 3 : 1) : (busnum(k) === busnum(dump.slack) ? 3 : 1),
+      gen: d ? d.gen : dump.p[k] < 0,
+      pd:  d ? d.pd  : Math.max(dump.p[k], 0) * 100,
+      kv:  d ? (d.kv || 0) : 0,
+    };
+  }).sort((a, b) => a.id - b.id);
+  const by = new Map(buses.map(b => [b.id, b]));
+  const edges = dump.edges.map(e => {
+    const f = busnum(e.f), t = busnum(e.t);
+    const d = (disp && disp.edges[ekey({ f, t })]) || null;
+    return { f, t, xf: d ? d.xf : false, on: d ? d.on : true };
+  });
+  if (sk) { try { sk.stopLayout(); } catch (e) {} sk = null; skKey = ''; }
+  S = { name, buses, edges, by, dump, net: new Net(dump, name),
+        open: new Set(S0open), cont: new Set(S0cont), pf: null,
+        liveE: new Set(), liveB: new Set() };
+  computeGroups();
+  S.levels = [...new Set(buses.map(b => b.kv))].sort((a, b) => a - b);
+  const hasKV = S.levels.length > 1;
+  $('colorby').options[1].disabled = !hasKV;
+  $('colorby').value = hasKV ? 'volt' : 'group';
+  sel.clear(); undoStack = [];
+  if (buses.length <= 600) layoutFR(false); else layoutRandom();
+  build();
+  say(`${name}: ${buses.length} buses, ${edges.length} branches, ` +
+      `${S.groups.length} galvanic groups, ` +
+      (hasKV ? `baseKV ${S.levels.join('/')}` : 'no baseKV data') +
+      (disp ? '' : ' · no display block in this dump: run tools/enrich_dump.py for ' +
+                   'transformers, baseKV and the gen/load split'));
+}
+
+/* Galvanic groups: connected components once transformer branches are cut.
+   A structural grouping, NOT an inference of voltage level - checked against the
+   cases that carry real baseKV, it does not reproduce them. */
+function computeGroups() {
+  const adj = new Map(S.buses.map(b => [b.id, []]));
+  for (const e of S.edges) {
+    if (e.xf || !e.on) continue;
+    adj.get(e.f).push(e.t); adj.get(e.t).push(e.f);
+  }
+  const seen = new Set(), comps = [];
+  for (const b of S.buses) {
+    if (seen.has(b.id)) continue;
+    const st = [b.id], c = []; seen.add(b.id);
+    while (st.length) { const u = st.pop(); c.push(u);
+      for (const v of adj.get(u)) if (!seen.has(v)) { seen.add(v); st.push(v); } }
+    comps.push(c);
+  }
+  comps.sort((a,b) => b.length - a.length);
+  comps.forEach((c,i) => c.forEach(id => S.by.get(id).grp = i));
+  S.groups = comps;
+}
+
+/* ---------------- colour ---------------- */
+const mode = () => $('colorby').value;
+function fillOf(b) {
+  if (mode() === 'volt') {
+    const L = S.levels.length, i = S.levels.indexOf(b.kv);
+    if (L < 2) return OTHER;
+    return RAMP[L <= 5 ? Math.round(i*(RAMP.length-1)/(L-1))
+                       : Math.min(RAMP.length-1, Math.floor(i*RAMP.length/L))];
+  }
+  if (mode() === 'group') return b.grp < CAT.length ? CAT[b.grp] : OTHER;
+  return b.type === 3 ? ROLE.slack : b.gen ? ROLE.gen : b.pd > 0 ? ROLE.load : ROLE.none;
+}
+/* Shape is the secondary encoding group mode needs: its worst all-pairs CVD
+   separation sits in the 6-8 band, which is only legal alongside a second channel. */
+const shapeOf = b => mode() === 'group' && b.grp < SHAPES.length ? SHAPES[b.grp] : 'circle';
+function shapeD(kind, cx, cy, r) {
+  if (kind === 'circle')
+    return `M${cx-r},${cy}a${r},${r} 0 1,0 ${2*r},0a${r},${r} 0 1,0 ${-2*r},0`;
+  if (kind === 'square') { const a = r*0.88;
+    return `M${cx-a},${cy-a}H${cx+a}V${cy+a}H${cx-a}Z`; }
+  const n = { triangle:3, diamond:4, pentagon:5, hexagon:6 }[kind];
+  const rot = kind === 'diamond' ? 0 : -Math.PI/2, rr = r*1.15;
+  return 'M' + Array.from({length:n}, (_,i) => {
+    const a = rot + 2*Math.PI*i/n;
+    return `${(cx+rr*Math.cos(a)).toFixed(2)},${(cy+rr*Math.sin(a)).toFixed(2)}`;
+  }).join('L') + 'Z';
+}
+function drawLegend() {
+  const el = $('legend'); if (!el) return;
+  if (!S.buses.length) { el.innerHTML = ''; return; }
+  const st = studying();
+  const row = (fill, shape, label, note) =>
+    `<div class="r"><svg width="14" height="14"><path d="${shapeD(shape,7,7,5)}"` +
+    ` fill="${fill}" stroke="#333" stroke-width="1"/></svg>` +
+    `<span>${label}</span>${note ? ` <span class="n">${note}</span>` : ''}</div>`;
+  let h = '';
+  if (mode() === 'volt') {
+    if (S.levels.length < 2) h = '<div class="t">voltage</div><div class="r n">no baseKV in this case</div>';
+    else {
+      /* More levels than ramp steps get binned, so collapse legend rows that
+         share a swatch into the kV range they actually stand for. */
+      const rows = [];
+      for (const kv of S.levels) {
+        const f = fillOf(S.buses.find(x => x.kv === kv));
+        const n = S.buses.filter(x => x.kv === kv).length;
+        const last = rows[rows.length-1];
+        if (last && last.f === f) { last.hi = kv; last.n += n; }
+        else rows.push({ f, lo:kv, hi:kv, n });
+      }
+      h = '<div class="t">base kV</div>' + rows.map(r =>
+        row(r.f, 'circle', r.lo === r.hi ? r.lo + ' kV' : r.lo + '–' + r.hi + ' kV',
+            '· ' + r.n)).join('');
+    }
+  } else if (mode() === 'group') {
+    /* Study mode takes the shape channel over for load/generation, so the group
+       swatches drop to plain circles there - colour alone then carries the group,
+       which is why the shape key below spells out what shape now means. */
+    h = '<div class="t">galvanic group <span class="n">(transformers cut)</span></div>' +
+      S.groups.slice(0, CAT.length).map((c,i) =>
+        row(CAT[i], st ? 'circle' : SHAPES[i], 'G' + (i+1),
+            '· ' + c.length + ' buses')).join('');
+    if (S.groups.length > CAT.length)
+      h += row(OTHER, 'circle', 'other', '· ' + (S.groups.length - CAT.length) + ' groups');
+  } else {
+    h = '<div class="t">role</div>' +
+        row(ROLE.slack,'circle','slack') + row(ROLE.gen,'circle','generator') +
+        row(ROLE.load,'circle','load') + row(ROLE.none,'circle','passive');
+  }
+  if (st) h += '<div class="t" style="margin-top:5px">bus shape</div>' +
+               row('#bbbbb8', 'square', 'load', '· p ≥ 0') +
+               row('#bbbbb8', 'circle', 'generator', '· p < 0') +
+               '<div class="r n">size ∝ √|injection|</div>';
+  el.innerHTML = h;
+}
+
+/* ---------------- layouts ---------------- */
+function layoutRandom() {
+  const r = Math.sqrt(S.buses.length) * 1.2;
+  S.buses.forEach(b => { b.x = (Math.random()-.5)*2*r; b.y = (Math.random()-.5)*2*r; });
+}
+function layoutCircle() {
+  const n = S.buses.length, r = n/(2*Math.PI)*1.6;
+  S.buses.forEach((b,i) => { b.x = r*Math.cos(2*Math.PI*i/n); b.y = r*Math.sin(2*Math.PI*i/n); });
+}
+function layoutFR(warm) {
+  const n = S.buses.length; if (!n) return;
+  if (!warm) layoutRandom();
+  const W = Math.sqrt(n)*2.5, k = W/Math.sqrt(n), iters = 400;
+  let t = W/6;
+  const dx = new Float64Array(n), dy = new Float64Array(n), B = S.buses;
+  const idx = new Map(B.map((b,i) => [b.id,i]));
+  for (let it=0; it<iters; it++) {
+    dx.fill(0); dy.fill(0);
+    for (let i=0;i<n;i++) for (let j=i+1;j<n;j++) {
+      let ex = B[i].x-B[j].x, ey = B[i].y-B[j].y;
+      let d2 = ex*ex+ey*ey; if (d2 < 1e-6) { ex = Math.random()*.01; ey = Math.random()*.01; d2 = 1e-6; }
+      const f = k*k/d2;
+      dx[i]+=ex*f; dy[i]+=ey*f; dx[j]-=ex*f; dy[j]-=ey*f;
+    }
+    for (const e of S.edges) {
+      const i = idx.get(e.f), j = idx.get(e.t);
+      const ex = B[i].x-B[j].x, ey = B[i].y-B[j].y;
+      const d = Math.hypot(ex,ey) || 1e-3, f = d/k;
+      dx[i]-=ex*f; dy[i]-=ey*f; dx[j]+=ex*f; dy[j]+=ey*f;
+    }
+    for (let i=0;i<n;i++) {
+      const d = Math.hypot(dx[i],dy[i]) || 1e-9, s = Math.min(d,t)/d;
+      B[i].x += dx[i]*s; B[i].y += dy[i]*s;
+    }
+    t *= 0.975;
+  }
+}
+function normalize() {
+  const size = fld('boxsize', 10), B = S.buses; if (!B.length) return;
+  const xs = B.map(b=>b.x), ys = B.map(b=>b.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const s = size / Math.max(x1-x0, y1-y0, 1e-9);
+  B.forEach(b => { b.x = (b.x-x0)*s; b.y = (b.y-y0)*s; });
+}
+
+/* ---------------- rendering ---------------- */
+function build() {
+  svg.innerHTML = '';
+  els = { grid:mk('g'), edges:[], hits:[], arrows:[], flabs:[], nodes:[], labels:[] };
+  svg.appendChild(els.grid);
+  const ge = mk('g'), ga = mk('g'), gn = mk('g'), gl = mk('g'), gf = mk('g'), gh = mk('g');
+  [ge, ga, gn, gl, gf, gh].forEach(g => svg.appendChild(g));
+  for (const e of S.edges) {
+    const l = mk('line'); l.setAttribute('class','edge'+(e.xf?' xf':''));
+    if (!e.on) l.setAttribute('opacity','.3');
+    ge.appendChild(l); els.edges.push(l);
+    const a = mk('path'); a.setAttribute('class','arrow');
+    ga.appendChild(a); els.arrows.push(a);
+    const t = mk('text'); t.setAttribute('class','flab');
+    gf.appendChild(t); els.flabs.push(t);
+    const h = mk('line'); h.setAttribute('class','hit'); h.dataset.ek = ekey(e);
+    gh.appendChild(h); els.hits.push(h);
+  }
+  for (const b of S.buses) {
+    const c = mk('path');
+    c.setAttribute('class','node'); c.dataset.id = b.id;
+    gn.appendChild(c); els.nodes.push(c);
+    const tx = mk('text'); tx.setAttribute('class','lbl'); tx.textContent = b.id;
+    gl.appendChild(tx); els.labels.push(tx);
+  }
+  const band = mk('rect'); band.id = 'band'; band.setAttribute('visibility','hidden');
+  svg.appendChild(band);
+  fitView(); 
+}
+const mk = t => document.createElementNS(NS, t);
+
+function drawGrid() {
+  const g = els.grid; if (!g) return;
+  g.innerHTML = '';
+  const step = fld('step', 1);
+  const { w, h } = size();
+  if (step*view.k < 6) return;
+  const x0 = Math.floor(wX(0)/step)*step, x1 = wX(w), y0 = Math.floor(wY(h)/step)*step, y1 = wY(0);
+  for (let x=x0; x<=x1; x+=step) {
+    const l = mk('line'); l.setAttribute('class', Math.abs(x)<1e-9?'axis':'grid');
+    l.setAttribute('x1',X(x)); l.setAttribute('x2',X(x)); l.setAttribute('y1',0); l.setAttribute('y2',h);
+    g.appendChild(l);
+  }
+  for (let y=y0; y<=y1; y+=step) {
+    const l = mk('line'); l.setAttribute('class', Math.abs(y)<1e-9?'axis':'grid');
+    l.setAttribute('y1',Y(y)); l.setAttribute('y2',Y(y)); l.setAttribute('x1',0); l.setAttribute('x2',w);
+    g.appendChild(l);
+  }
+}
+/* 3 significant digits, as asked - 123.4 -> "123", 0.5 -> "0.5" */
+const sig3 = v => String(parseFloat(v.toPrecision(3)));
+
+function draw() {
+  const st = studying(), pf = S.pf;
+  if (st) els.grid.innerHTML = ''; else drawGrid();   // the grid is placement furniture
+  drawLegend();
+  /* calcanddraw's rule (DrawGrid.jl:92): width scales with the loading ratio
+     |p|/p_max normalised by the WORST ratio on the grid, not by p_max. */
+  let maxRatio = 0;
+  if (st && pf) for (const e of S.edges) {
+    const k = ekey(e), pm = pf.pmax[k];
+    if (pm > 0 && !S.open.has(k)) maxRatio = Math.max(maxRatio, Math.abs(pf.flows[k]||0)/pm);
+  }
+  const w0 = fld('w0', 0.3), wk = fld('wk', 8);
+
+  S.edges.forEach((e,i) => {
+    const a = S.by.get(e.f), b = S.by.get(e.t), l = els.edges[i];
+    const ax = X(a.x), ay = Y(a.y), bx = X(b.x), by_ = Y(b.y);
+    l.setAttribute('x1',ax); l.setAttribute('y1',ay);
+    l.setAttribute('x2',bx); l.setAttribute('y2',by_);
+    const h = els.hits[i];
+    h.setAttribute('x1',ax); h.setAttribute('y1',ay);
+    h.setAttribute('x2',bx); h.setAttribute('y2',by_);
+    const arr = els.arrows[i], lab = els.flabs[i];
+    l.classList.remove('flow','over','dead','open','ctg');
+    if (!st || !pf) { l.style.strokeWidth = '';
+                      arr.setAttribute('d',''); lab.textContent = ''; return; }
+    const k = ekey(e), isOpen = S.open.has(k), live = S.liveE.has(k);
+    const p = pf.flows[k] || 0, pm = pf.pmax[k] || 0;
+    if (isOpen || S.cont.has(k)) {      // topology opening: bold black solid
+      l.classList.add(isOpen ? 'open' : 'ctg');   // contingency: bold black dashed
+      l.style.strokeWidth = '4.5px';
+      arr.setAttribute('d',''); lab.textContent = ''; return;
+    }
+    if (!live) {                        // de-energized: black, but not bold
+      l.classList.add('dead'); l.style.strokeWidth = '1.4px';
+      arr.setAttribute('d',''); lab.textContent = ''; return;
+    }
+    const ratio = pm > 0 ? Math.abs(p)/pm : 0;
+    const w = w0 + (maxRatio > 0 ? wk*ratio/maxRatio : 0);
+    l.classList.add(ratio > 1 ? 'over' : 'flow');
+    l.style.strokeWidth = w + 'px';
+    // Arrow at the midpoint, pointing the way the power actually goes.
+    // The flow sign is defined on the (min,max) key order, which is NOT
+    // necessarily e.f -> e.t: 5 of case57's branches are stored the other way
+    // round, and reading the geometry off e.f/e.t reversed their arrows.
+    const dx = bx-ax, dy = by_-ay, len = Math.hypot(dx,dy) || 1;
+    const orient = e.f <= e.t ? 1 : -1;
+    const sgn = (p >= 0 ? 1 : -1) * orient, ux = sgn*dx/len, uy = sgn*dy/len;
+    // half-width must clear w/2 or the head disappears into the band
+    const W = Math.max(4.5, w * 0.9), S1 = W * 1.55;
+    const mx = (ax+bx)/2, my = (ay+by_)/2;
+    arr.setAttribute('d', `M${mx+ux*S1},${my+uy*S1}L${mx-ux*S1-uy*W},${my-uy*S1+ux*W}` +
+                          `L${mx-ux*S1+uy*W},${my-uy*S1-ux*W}Z`);
+    arr.setAttribute('fill', ratio > 1 ? '#e00000' : '#00a000');
+    lab.textContent = sig3(Math.abs(p)*(pf.base||100));
+    const off = Math.max(11, W + 7);
+    lab.setAttribute('x', mx - uy*off); lab.setAttribute('y', my + ux*off + 3.5);
+  });
+
+  /* DrawGrid.jl:76-77 — marker is :rect when p >= 0 (load) and :circle when
+     p < 0 (generation), size is sqrt(|p|)/sqrt(max_p). Same rule here, with a
+     floor so a zero-injection bus stays visible and clickable. */
+  const RMIN = 2.5, rmax = Math.max(RMIN + 1, fld('bus', 14));
+  let maxAbsP = 0;
+  if (st && pf) for (const b of S.buses) maxAbsP = Math.max(maxAbsP, Math.abs(pf.p[b.id] || 0));
+  S.buses.forEach((b,i) => {
+    const c = els.nodes[i], t = els.labels[i];
+    let r, shp;
+    if (st && pf) {
+      const inj = pf.p[b.id] || 0;
+      r = RMIN + (rmax - RMIN) * (maxAbsP > 0 ? Math.sqrt(Math.abs(inj) / maxAbsP) : 0);
+      shp = inj >= 0 ? 'square' : 'circle';
+    } else {
+      r = b.type === 3 ? 8 : 6;
+      shp = shapeOf(b);
+    }
+    c.setAttribute('d', shapeD(shp, X(b.x), Y(b.y), r));
+    c.setAttribute('fill', fillOf(b));
+    c.classList.toggle('sel', sel.has(b.id));
+    const dead = st && pf && !S.liveB.has(b.id);
+    c.setAttribute('opacity', dead ? .3 : 1);
+    t.setAttribute('opacity', dead ? .3 : 1);
+    t.setAttribute('x', X(b.x) + r + 3); t.setAttribute('y', Y(b.y) - r - 2);
+  });
+}
+function fitView() {
+  const B = S.buses; if (!B.length) return;
+  const { w, h } = size(), m = 60;
+  const x0 = Math.min(...B.map(b=>b.x)), x1 = Math.max(...B.map(b=>b.x));
+  const y0 = Math.min(...B.map(b=>b.y)), y1 = Math.max(...B.map(b=>b.y));
+  view.k = Math.min((w-2*m)/Math.max(x1-x0,1e-9), (h-2*m)/Math.max(y1-y0,1e-9));
+  if (!isFinite(view.k) || view.k <= 0) view.k = 40;
+  view.tx = w/2 - view.k*(x0+x1)/2;
+  view.ty = h/2 + view.k*(y0+y1)/2;
+  draw();
+}
+
+/* ---------------- power flow ---------------- */
+function solve() {
+  if (!S.buses.length || !studying()) { draw(); return; }
+  let j;
+  try {
+    j = pfResult(S.net, new Set([...S.open, ...S.cont]), fld('tlf', 1));
+  } catch (e) {
+    S.pf = null; say('PF ERROR ' + e.message); draw(); return;
+  }
+  S.pf = j; S.liveE = new Set(j.live_edges); S.liveB = new Set(j.live);
+  let over = 0;
+  for (const e of S.edges) {
+    const k = ekey(e);
+    if (!S.open.has(k) && S.liveE.has(k) && Math.abs(j.flows[k]) > j.pmax[k]) over++;
+  }
+  const dead = S.buses.length - j.live.length;
+  say(`${S.name}: slack ${j.slack} · ${S.open.size} open · ` +
+      (S.cont.size ? `contingency {${[...S.cont].join(', ')}} · ` : 'no contingency · ') +
+      `${over} overloaded · ${dead} de-energized bus(es)` +
+      ` · graph as create_case("${S.name}") builds it`);
+  draw(); skRefresh();
+}
+
+/* N-1 over the applied topology. Deliberately ignores S.cont: the table answers
+   "is this topology secure", which the contingency being *viewed* must not change. */
+async function runSA() {
+  const info = $('sainfo'), tb = document.querySelector('#sabody tbody');
+  if (!studying() || !S.buses.length) { tb.innerHTML = ''; return; }
+  info.textContent = 'computing…';
+  /* the sweep is synchronous and runs into the hundreds of ms on case118, so
+     yield once to let 'computing…' actually paint */
+  await new Promise(r => requestAnimationFrame(r));
+  let j;
+  try {
+    j = saResult(S.net, new Set(S.open), fld('trig', 95) / 100, fld('tlf', 1));
+  } catch (e) {
+    info.textContent = 'ERROR ' + e.message; tb.innerHTML = ''; return;
+  }
+  const ctgs = new Set(j.rows.map(x => x.ctg));
+  const trig = fld('trig', 95);
+  /* magnitude = the overload sum over the WHOLE N-1 sweep, not just the rows
+     listed. Two units because they answer different questions: MW is the
+     literal flow above the limit, Φ is Potentials.jl's Σ max(0, ℓ−threshold). */
+  info.innerHTML =
+    `${j.rows.length} violation(s) over ${ctgs.size} contingenc` +
+    `${ctgs.size === 1 ? 'y' : 'ies'} of ${j.n_ctg} · ${j.ms} ms\n` +
+    `eval_risk   <b>${sig3(j.risk)}</b> MW\n` +
+    `magnitude   @100%  <b>${sig3(j.mw100)}</b> MW   Φ ${j.phi100.toFixed(3)}\n` +
+    `            @${String(trig).padStart(3)}%  <b>${sig3(j.mwtrig)}</b> MW   Φ ${j.phitrig.toFixed(3)}`;
+  tb.innerHTML = j.rows.map(x =>
+    `<tr class="${x.load > 100 ? 'over' : ''}" data-ctg="${x.ctg}"><td>${x.ctg}</td>` +
+    `<td>${x.br}</td><td>${sig3(x.base)}</td><td>${sig3(x.cont)}</td>` +
+    `<td>${x.load.toFixed(1)}%</td>` +
+    `<td>${x.ratio === null ? '—' : x.ratio.toFixed(0) + '%'}</td></tr>`).join('');
+  markActiveRows();
+}
+function markActiveRows() {
+  document.querySelectorAll('#sabody tbody tr').forEach(
+    tr => tr.classList.toggle('active', S.cont.has(tr.dataset.ctg)));
+}
+document.querySelector('#sabody').addEventListener('click', ev => {
+  const tr = ev.target.closest('tr'); if (!tr || !tr.dataset.ctg) return;
+  const k = tr.dataset.ctg;                    // click a row to view that contingency
+  S.cont.has(k) ? S.cont.delete(k) : (S.cont.clear(), S.cont.add(k));
+  markActiveRows(); solve();
+});
+
+/* ---------------- sankey (powsybl-sankey, the TS port of SankeyPF.jl) -------- */
+let sk = null, skKey = '';
+/* All branches are always sent, open ones flagged `outage`, so the branch key
+   set never changes and updateScenarioFlows (cheap, animated) always applies -
+   updateTopology is only for bus split/merge, which this app does not do. */
+function skScenario() {
+  const pf = S.pf; if (!pf) return null;
+  return {
+    buses: S.buses.map(b => ({ id:String(b.id), voltage_angle: pf.phi[b.id] ?? 0,
+                               is_slack: b.id === pf.slack })),
+    branches: S.edges.map(e => {
+      const k = ekey(e), [f, t] = k.split('-');
+      return { id:k, from_bus:f, to_bus:t, flow: pf.flows[k] ?? 0,
+               p_max: pf.pmax[k] ?? 0, outage: S.open.has(k) || S.cont.has(k) };
+    }),
+    meta: { case_name: S.name },
+  };
+}
+function skRefresh() {
+  const box = $('skbox');
+  if (!studying() || !$('skshow').checked || !S.pf || !window.PowsyblSankey) return;
+  const scen = skScenario();
+  if (sk && skKey === S.name) {
+    sk.updateScenarioFlows(scen);                 // restarts the layout internally
+    if (!skRun) setTimeout(() => sk && sk.stopLayout(), 600);   // let it settle, then hold
+    return;
+  }
+  if (sk) { try { sk.stopLayout(); } catch (e) {} }
+  box.innerHTML = '';
+  sk = new PowsyblSankey.SankeyRenderer(box, scen);   // default orientation is vertical
+  skKey = S.name;
+  sk.setOrientation($('skor').value);
+  sk.startLayout();
+  if (!skRun) setTimeout(() => sk && sk.stopLayout(), 600);
+}
+/* The library hard-stops the force layout after MAX_LAYOUT_MS (2 s) whether or
+   not it has converged, which on 57 buses leaves it half-settled. While the
+   button says "freeze" we just restart it, so it runs until you say stop. */
+let skRun = true;
+function skSetRun(on) {
+  skRun = on;
+  $('skrun').textContent = on ? 'freeze' : 'run';
+  if (!sk) return;
+  on ? sk.startLayout() : sk.stopLayout();
+}
+setInterval(() => { if (sk && skRun && !sk.isRunning()) sk.startLayout(); }, 300);
+$('skrun').onclick = () => skSetRun(!skRun);
+$('skor').onchange = () => sk && sk.setOrientation($('skor').value);
+$('skauto').onclick = () => sk && sk.autoscale();
+$('skstretch').oninput = () => sk && sk.setStretch(+$('skstretch').value);
+$('skalign').oninput = () => sk && sk.setAlign(+$('skalign').value);
+$('skrepulse').oninput = () => sk && sk.setRepulse(+$('skrepulse').value);
+function syncMode() {
+  document.body.classList.toggle('study', studying());
+  document.body.classList.toggle('sankey', $('skshow').checked);
+  document.body.classList.toggle('table', $('tabshow').checked);
+}
+$('tabshow').onchange = () => { syncMode(); fitView(); };
+$('skshow').onchange = () => { syncMode(); fitView(); skRefresh(); };
+
+/* ---------------- panel resize / hide ---------------- */
+const MINPANEL = 200, MINCANVAS = 260;
+let grip = null;
+document.querySelectorAll('.grip').forEach(g =>
+  g.addEventListener('mousedown', ev => {
+    const el = $(g.dataset.for);
+    grip = { g, el, x0: ev.clientX, w0: el.getBoundingClientRect().width };
+    g.classList.add('drag');
+    document.body.style.userSelect = 'none';
+    ev.preventDefault();
+  }));
+window.addEventListener('mousemove', ev => {
+  if (!grip) return;
+  const other = grip.g.dataset.for === 'sa' ? $('sk') : $('sa');
+  const otherW = other.offsetParent ? other.getBoundingClientRect().width : 0;
+  const max = window.innerWidth - MINCANVAS - otherW;
+  grip.el.style.width = Math.max(MINPANEL, Math.min(max, grip.w0 + grip.x0 - ev.clientX)) + 'px';
+  draw();
+});
+window.addEventListener('mouseup', () => {
+  if (!grip) return;
+  grip.g.classList.remove('drag');
+  document.body.style.userSelect = '';
+  try { localStorage.setItem('coordedit.w.' + grip.g.dataset.for,
+                             parseInt(grip.el.style.width, 10)); } catch (e) {}
+  grip = null;
+  fitView();
+  // the sankey sizes its decorations from clientWidth, so make it re-measure
+  if (sk) sk.setStretch(fld('skstretch', 1));
+});
+for (const id of ['sa', 'sk']) {                 // remembered per browser, best effort
+  try { const v = localStorage.getItem('coordedit.w.' + id);
+        if (v) $(id).style.width = parseInt(v, 10) + 'px'; } catch (e) {}
+}
+$('saclose').onclick = () => { $('tabshow').checked = false; syncMode(); fitView(); };
+$('skclose').onclick = () => { $('skshow').checked = false; syncMode(); fitView(); };
+
+/* ---------------- interaction ---------------- */
+let drag = null;
+function pt(ev) {
+  const r = svg.getBoundingClientRect();
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+}
+function pushUndo() {
+  undoStack.push(S.buses.map(b => [b.x,b.y]));
+  if (undoStack.length > 100) undoStack.shift();
+}
+svg.addEventListener('mousedown', ev => {
+  const p = pt(ev);
+  const ek = ev.target.dataset ? ev.target.dataset.ek : null;
+  if (ek) {
+    ev.preventDefault();
+    if (ev.shiftKey) {                        // shift+click: view it as a contingency
+      if (S.open.has(ek)) { say(`${ek} is already open in the topology`); return; }
+      S.cont.has(ek) ? S.cont.delete(ek) : S.cont.add(ek);
+      markActiveRows(); solve();
+    } else {                                  // plain click: change the topology
+      S.open.has(ek) ? S.open.delete(ek) : S.open.add(ek);
+      S.cont.delete(ek);                      // a branch cannot be both
+      solve(); runSA();                       // topology changed -> SA is stale
+    }
+    return;
+  }
+  const id = (!studying() && ev.target.dataset && ev.target.dataset.id)
+             ? +ev.target.dataset.id : null;
+  if (id !== null) {
+    if (ev.shiftKey) { sel.has(id) ? sel.delete(id) : sel.add(id); draw(); return; }
+    if (!sel.has(id)) { sel.clear(); sel.add(id); }
+    pushUndo();
+    const moving = [...sel].map(i => S.by.get(i));
+    drag = { type:'node', moving, ox:wX(p.x), oy:wY(p.y),
+             start:moving.map(b => [b.x,b.y]) };
+  } else if (ev.shiftKey) {
+    drag = { type:'band', x0:p.x, y0:p.y };
+  } else {
+    if (!ev.altKey) { sel.clear(); draw(); }
+    drag = { type:'pan', x0:p.x, y0:p.y, tx:view.tx, ty:view.ty };
+  }
+  ev.preventDefault();
+});
+window.addEventListener('mousemove', ev => {
+  if (!drag) return;
+  const p = pt(ev);
+  if (drag.type === 'node') {
+    const dx = wX(p.x)-drag.ox, dy = wY(p.y)-drag.oy;
+    const snap = $('snap').checked, st = fld('step', 1);
+    drag.moving.forEach((b,i) => {
+      let x = drag.start[i][0]+dx, y = drag.start[i][1]+dy;
+      if (snap) { x = Math.round(x/st)*st; y = Math.round(y/st)*st; }
+      b.x = x; b.y = y;
+    });
+    draw();
+  } else if (drag.type === 'pan') {
+    view.tx = drag.tx + p.x-drag.x0; view.ty = drag.ty + p.y-drag.y0; draw();
+  } else {
+    const r = $('band'), x = Math.min(drag.x0,p.x), y = Math.min(drag.y0,p.y);
+    r.setAttribute('visibility','visible');
+    r.setAttribute('x',x); r.setAttribute('y',y);
+    r.setAttribute('width',Math.abs(p.x-drag.x0)); r.setAttribute('height',Math.abs(p.y-drag.y0));
+  }
+});
+window.addEventListener('mouseup', ev => {
+  const p = pt(ev);
+  if (drag && drag.type === 'band') {
+    const x0 = Math.min(drag.x0,p.x), x1 = Math.max(drag.x0,p.x);
+    const y0 = Math.min(drag.y0,p.y), y1 = Math.max(drag.y0,p.y);
+    S.buses.forEach(b => { const sx=X(b.x), sy=Y(b.y);
+      if (sx>=x0&&sx<=x1&&sy>=y0&&sy<=y1) sel.add(b.id); });
+    $('band').setAttribute('visibility','hidden'); draw();
+  }
+  if (drag && drag.type === 'node') report();
+  drag = null;
+});
+svg.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const p = pt(ev);
+  const f = Math.exp(-ev.deltaY*0.002), wx = wX(p.x), wy = wY(p.y);
+  view.k *= f; view.tx = p.x - view.k*wx; view.ty = p.y + view.k*wy;
+  draw();
+}, {passive:false});
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') return;
+  if ((ev.metaKey||ev.ctrlKey) && ev.key === 'z' && undoStack.length) {
+    const p = undoStack.pop(); S.buses.forEach((b,i) => { b.x=p[i][0]; b.y=p[i][1]; }); draw();
+  }
+  if (ev.key === 'Escape') { sel.clear(); draw(); }
+  if (ev.key === 'a' && (ev.metaKey||ev.ctrlKey)) { ev.preventDefault(); S.buses.forEach(b=>sel.add(b.id)); draw(); }
+});
+window.addEventListener('resize', draw);
+
+/* ---------------- csv i/o ---------------- */
+const num = v => (Math.round(v*1e4)/1e4).toString();
+const toCSV = () => 'bus_i,x,y\n' + S.buses.map(b => `${b.id},${num(b.x)},${num(b.y)}`).join('\n') + '\n';
+function applyCSV(txt) {
+  const lines = txt.trim().split('\n');
+  const head = lines[0].split(',').map(s => s.trim().toLowerCase());
+  const ib = head.indexOf('bus_i'), ix = head.indexOf('x'), iy = head.indexOf('y');
+  if (ib<0||ix<0||iy<0) throw new Error('csv needs bus_i,x,y columns');
+  let n = 0;
+  for (const l of lines.slice(1)) {
+    const c = l.split(',');
+    const b = S.by.get(+c[ib]); if (!b) continue;
+    b.x = +c[ix]; b.y = +c[iy]; n++;
+  }
+  return n;
+}
+function report() {
+  say(`${S.name}: ${S.buses.length} buses, ${S.edges.length} branches | ${sel.size} selected`);
+}
+
+/* ---------------- wiring ---------------- */
+const guess = n => n.replace(/_ieee$/i,'_IEEE').replace(/^case(\d+)_IEEE$/,'case$1_IEEE');
+let CASES = [];
+async function loadCase(name) {
+  const c = CASES.find(x => x.name === name);
+  buildDump(await files.fetchJSON('cases/' + (c ? c.file : name + '.json')), name);
+  if (!$('outname').value) $('outname').value = guess(name);
+  await tryCoords();
+  solve();
+  await runSA();
+}
+async function tryCoords() {
+  const out = $('outname').value.trim(); if (!out) return;
+  const got = await files.readCoord(out);
+  if (!got) { say(S.name + ': no existing ' + out + '.csv — using layout'); return; }
+  const n = applyCSV(got.text); fitView();
+  say(`${S.name}: loaded ${n} coords from ${got.from}${out}.csv`);
+}
+
+/* The folder save csv writes into. Picking one reproduces what the Python
+   server did when it wrote straight into data/exp_raw/coord/; without one,
+   saving hands the file over instead. */
+async function showDir() {
+  const name = await files.dirName();
+  const live = name && await files.coordDir();
+  $('dirname').textContent = name ? (live ? '→ ' + name + '/' : '→ ' + name + '/ (click folder… to re-allow)') : '';
+  $('pickdir').textContent = name ? 'folder ✓' : 'folder…';
+}
+$('pickdir').onclick = async () => {
+  if (!files.canPickDir) return say('this browser cannot write to a folder — save csv will hand you the file');
+  try {
+    if (await files.dirName() && !(await files.coordDir({ interactive: true }))) {
+      await files.forgetCoordDir();                 // permission refused: start over
+    }
+    if (!(await files.coordDir())) await files.pickCoordDir();
+    await showDir();
+    say('save csv now writes into ' + (await files.dirName()) + '/');
+  } catch (e) { if (e.name !== 'AbortError') say('ERROR ' + e.message); }
+};
+$('opencase').onclick = async () => {
+  try {
+    const f = await files.openLocalFile('.json');
+    if (!f) return;
+    const name = f.name.replace(/\.json$/i, '');
+    buildDump(JSON.parse(f.text), name);
+    if (!$('outname').value) $('outname').value = guess(name);
+    await tryCoords();
+    solve();
+    await runSA();
+  } catch (e) { say('ERROR ' + e.message); }
+};
+$('load').onclick = () => loadCase($('case').value).catch(e => say('ERROR ' + e.message));
+$('reload').onclick = () => tryCoords().catch(e => say('ERROR ' + e.message));
+$('fr').onclick = () => { pushUndo(); layoutFR($('warm').checked); fitView(); };
+$('circle').onclick = () => { pushUndo(); layoutCircle(); fitView(); };
+$('rand').onclick = () => { pushUndo(); layoutRandom(); fitView(); };
+$('normalize').onclick = () => { pushUndo(); normalize(); fitView(); };
+$('fit').onclick = fitView;
+$('study').onchange = () => {
+  syncMode();
+  sel.clear();
+  fitView();                                  // the canvas just changed width
+  if (studying()) { solve(); runSA(); } else { S.pf = null; draw(); }
+};
+$('closeall').onclick = () => { S.open.clear(); S.cont.clear(); solve(); runSA(); };
+$('trig').onchange = runSA;
+$('tlf').onchange = () => { solve(); runSA(); };   // p_max changes: flows same, loadings not
+$('bus').oninput = draw;
+$('w0').oninput = draw;
+$('wk').oninput = draw;
+$('colorby').onchange = draw;
+$('step').onchange = draw;
+$('snap').onchange = draw;
+$('save').onclick = async () => {
+  const name = $('outname').value.trim();
+  if (!name) return say('give an output name first');
+  try {
+    const r = await files.saveCoord(name, toCSV());
+    say({ dir: 'SAVED → ', picked: 'SAVED → ', download: 'DOWNLOADED → ' }[r.how] + r.where);
+    await showDir();
+  } catch (e) { if (e.name !== 'AbortError') say('ERROR ' + e.message); }
+};
+$('dl').onclick = () =>
+  files.download(($('outname').value.trim() || S.name || 'coord') + '.csv', toCSV(), 'text/csv');
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    try {
+      if (f.name.endsWith('.csv')) {
+        const n = applyCSV(r.result); fitView();
+        say('loaded ' + n + ' coords from ' + f.name);
+      } else {
+        buildDump(JSON.parse(r.result), f.name.replace(/\.json$/i, ''));
+        solve(); await runSA();
+      }
+    } catch(err) { say('ERROR ' + err.message); }
+  };
+  r.readAsText(f);
+});
+
+(async () => {
+  const idx = await files.fetchJSON('cases/index.json');
+  CASES = idx.cases;
+  const csel = $('case');            // `sel` is the node selection, module-level
+  for (const c of CASES) {
+    const o = document.createElement('option');
+    o.value = c.name;
+    o.textContent = `${c.name} — ${c.buses} buses, ${c.edges} branches`;
+    csel.appendChild(o);
+  }
+  const q = new URLSearchParams(location.search);
+  if (q.get('study')) $('study').checked = true;
+  if (q.get('sankey') === '0') $('skshow').checked = false;
+  syncMode();
+  if (q.get('open')) for (const k of q.get('open').split(',')) S0open.push(k);
+  if (q.get('cont')) for (const k of q.get('cont').split(',')) S0cont.push(k);
+  const want = q.get('case');
+  const pref = (CASES.find(c => c.name === want) || CASES.find(c => c.name === 'case57_ieee')
+                || CASES[0] || {}).name;
+  if (pref) csel.value = pref;
+  /* the network first: everything below only decorates the chrome, and none of
+     it may delay — or, if storage is unavailable, prevent — the case loading */
+  if (pref) await loadCase(pref).catch(e => say('ERROR ' + e.message));
+  showDir().catch(() => {});
+  files.listCoords().then(co => {
+    $('coordinfo').textContent =
+      `${CASES.length} case dump(s) · ${co.files.length} layout(s) in ${co.from || 'none'}`;
+  }).catch(() => {});
+})();</script>
+</body>
+</html>

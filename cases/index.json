@@ -1,0 +1,25 @@
+{
+ "cases": [
+  {
+   "name": "case118",
+   "file": "case118.json",
+   "buses": 118,
+   "edges": 179,
+   "display": true
+  },
+  {
+   "name": "case14",
+   "file": "case14.json",
+   "buses": 14,
+   "edges": 20,
+   "display": true
+  },
+  {
+   "name": "case57_ieee",
+   "file": "case57_ieee.json",
+   "buses": 57,
+   "edges": 78,
+   "display": true
+  }
+ ]
+}
