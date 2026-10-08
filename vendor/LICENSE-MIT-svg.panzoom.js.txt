@@ -1,15 +1,6 @@
-gridview is licensed under the MIT License, below.
+The MIT License (MIT)
 
-This covers gridview's own code only. The bundle in vendor/ is third-party
-code under its own terms — @powsybl/sankey under MPL-2.0, @svgdotjs/svg.js and
-@svgdotjs/svg.panzoom.js under MIT. See vendor/README.md for the notices, the
-full license texts, and where to obtain the MPL Source Form.
-
-----------------------------------------------------------------------
-
-MIT License
-
-Copyright (c) 2026 Benoit Jeanson
+Copyright (c) 2019 Ulrich-Matthias Schäfer
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

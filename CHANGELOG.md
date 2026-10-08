@@ -22,6 +22,15 @@
 - N−1 rows break loading ties by name, so the table is reproducible across machines.
 - `open case…` takes a case dump from disk, where the old file input took a `.m` file.
 
+### Fixed
+- Third-party licensing in `vendor/`. The esbuild bundle of `@powsybl/sankey` carried
+  no copyright or licence notice at all: `--legal-comments=inline` keeps only comments
+  tagged `@license` or `@preserve`, and PowSyBl's header is a plain `/** */` block, so
+  the build had silently stripped RTE's MPL-2.0 notice. Restored by `vendor/banner.js`,
+  which the documented rebuild command now applies. Added the full MPL-2.0 and MIT
+  texts, an MPL §3.2(b) Source Form pointer naming the upstream commit, and scoped the
+  repository `LICENSE` to gridview's own code.
+
 ### Removed
 - `serve.py`, `pf.py` and `requirements.txt`: no backend, and no Python at run time.
 - The matpower fallback. `coordedit` could re-derive a graph from a `.m` file when no

@@ -198,7 +198,7 @@ regenerates the fixture from it. Neither ships to the site.
 | `tools/enrich_dump.py` | adds `baseKV`, transformers and the gen/load split from the pglib `.m` |
 | `tools/make_index.py` | the two listings a static host cannot generate |
 | `test/` | the oracle, the fixture, and the test that pins the port to it |
-| `vendor/` | the bundled powsybl-sankey (MPL-2.0); see `vendor/README.md` to rebuild |
+| `vendor/` | the bundled powsybl-sankey and its dependencies; see `vendor/README.md` |
 
 ## Limitations
 
@@ -214,6 +214,23 @@ regenerates the fixture from it. Neither ships to the site.
   layout instead.
 - Saving into a folder needs the File System Access API — Chromium only. Elsewhere
   `save csv` hands you a download.
+
+## Licensing
+
+gridview's own code is MIT. `vendor/powsybl-sankey.js` is third-party and is not:
+
+| | | |
+|---|---|---|
+| `@powsybl/sankey` 3.8.0-dev.0 | MPL-2.0 | Copyright (c) 2026, RTE |
+| `@svgdotjs/svg.js` | MIT | Copyright (c) 2012-2018 Wout Fierens |
+| `@svgdotjs/svg.panzoom.js` | MIT | Copyright (c) 2019 Ulrich-Matthias Schäfer |
+
+It is vendored rather than installed because `@powsybl/sankey` is not published to
+npm — it exists only on an unmerged branch — and it is compiled, not modified.
+MPL-2.0 is file-level copyleft over the PowSyBl files themselves, so none of it
+reaches gridview's code; what it asks for is notice and source availability, and
+[`vendor/README.md`](vendor/README.md) carries both, including the exact upstream
+commit the bundle was built from.
 
 ## Provenance
 
