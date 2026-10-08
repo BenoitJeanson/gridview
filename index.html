@@ -16,7 +16,8 @@
   #status { padding:3px 8px; background:#fafafa; border-bottom:1px solid #ddd;
             font:11px/1.5 ui-monospace, Menlo, monospace; color:#555; white-space:pre; overflow:hidden; }
   #main { display:flex; height:calc(100vh - 68px); }
-  #svg { display:block; flex:1; height:100%; background:#fff; cursor:default; }
+  #svg { display:block; flex:1; height:100%; background:#fff; cursor:default;
+         touch-action:none; }
   #sa { display:none; flex-direction:column; width:430px; flex:none;
         border-left:1px solid #ccc; background:#fafafa; }
   body.study.table #sa { display:flex; }
@@ -92,7 +93,7 @@
      the study toggle itself all go, and the two side panels become tabs. */
   #tabs { display:none; }
   .ph-only { display:none !important; }
-  @media (max-width: 820px) {
+  @media (max-width: 820px), (max-height: 560px) and (pointer: coarse) {
     .ph-no { display:none !important; }
     .ph-only { display:inline-flex !important; align-items:center; gap:4px; }
     body:not(.more) .ph-more { display:none !important; }
@@ -124,7 +125,12 @@
     body.legendoff #legend { max-height:2.2em; overflow:hidden; }
     /* a fingertip is about 9 mm; the mouse-sized hit line is unusable */
     #svg .hit { stroke-width:22px; }
-    #svg { touch-action:none; }
+  }
+  /* landscape: ~390px of height for everything, so the status line is capped to
+     the two lines it takes at this width rather than left to run to three */
+  @media (max-height: 560px) and (pointer: coarse) {
+    #status { max-height:4.2em; overflow:hidden; }
+    #legend { max-height:30vh; }
   }
 </style>
 </head>
@@ -593,7 +599,20 @@ function fitView() {
   if (!isFinite(view.k) || view.k <= 0) view.k = 40;
   view.tx = w/2 - view.k*(x0+x1)/2;
   view.ty = h/2 + view.k*(y0+y1)/2;
+  fitted = { w, h };
   draw();
+}
+
+/* The canvas size the view was last fitted to. A hidden panel measures 0, so
+   re-fitting is driven by the size actually changing rather than by anything
+   having been shown or hidden — which is what lets the diagram keep its pan and
+   zoom across a tab switch, while a rotation still refits. */
+let fitted = { w: 0, h: 0 };
+function fitIfResized() {
+  const { w, h } = size();
+  if (!w || !h || !S.buses.length) return;
+  if (Math.abs(w - fitted.w) < 1 && Math.abs(h - fitted.h) < 1) return;
+  fitView();
 }
 
 /* ---------------- power flow ---------------- */
@@ -728,7 +747,8 @@ $('skshow').onchange = () => { syncMode(); fitView(); skRefresh(); };
    tabs rather than columns, and the controls that do not fit behind "⋯".
    The tabs drive the same two checkboxes the desktop panels use, so there is
    one visibility mechanism rather than two. */
-const PHONE = matchMedia('(max-width: 820px)');
+// kept textually in sync with the @media rule above
+const PHONE = matchMedia('(max-width: 820px), (max-height: 560px) and (pointer: coarse)');
 let tab = 'diagram';
 function setTab(t) {
   tab = t;
@@ -737,8 +757,12 @@ function setTab(t) {
   $('tabshow').checked = t === 'table';
   $('skshow').checked = t === 'sankey';
   syncMode();
-  // after the frame in which the panel actually takes its width, not before it
-  if (S.buses.length) requestAnimationFrame(() => fitView());
+  /* deliberately no fitView: the diagram keeps the pan and zoom you left it at.
+     Hiding it does not change its size, so there is nothing to re-fit — only a
+     real canvas change (rotation, a resized window) refits, via the handler
+     below. */
+  // only if the canvas really changed size, e.g. the first time it is shown
+  if (t === 'diagram') requestAnimationFrame(fitIfResized);
   if (t === 'sankey') skRefresh();
 }
 document.querySelectorAll('#tabs button')
@@ -759,7 +783,7 @@ function applyPhone() {
   } else {                            // back to a wide window: both panels return
     $('tabshow').checked = $('skshow').checked = true;
     syncMode();
-    if (S.buses.length) fitView();
+    requestAnimationFrame(fitIfResized);
     skRefresh();
   }
 }
@@ -768,7 +792,7 @@ PHONE.addEventListener('change', applyPhone);
 let refit;
 window.addEventListener('resize', () => {           // rotation, or a resized window
   clearTimeout(refit);
-  refit = setTimeout(() => { if (S.buses.length) { fitView(); skRefresh(); } }, 150);
+  refit = setTimeout(() => { fitIfResized(); skRefresh(); }, 150);
 });
 
 /* ---------------- panel resize / hide ---------------- */

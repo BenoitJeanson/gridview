@@ -66,7 +66,12 @@ fingertip is worse than not offering it — so the layout tools, the save contro
 the study toggle itself are hidden, and the two side panels become tabs:
 **diagram / table / sankey**, one at a time at full width.
 
-Drag to pan, pinch to zoom, tap a branch to open or close it. There is no shift key,
+Works in both orientations — a phone held sideways is wide enough to clear a
+width-only breakpoint, so the switch is on viewport height and a coarse pointer too.
+
+Drag to pan, pinch to zoom, tap a branch to open or close it. The diagram keeps where
+you panned and zoomed to when you visit the table or the sankey and come back; only a
+rotation refits it. There is no shift key,
 so the **tap** control in the bar switches between tapping a branch *open* and viewing
 it as a *contingency*. `⋯` reveals the colour, TLF and band-width controls that do not
 fit. The legend folds down to its heading; tap it to open.

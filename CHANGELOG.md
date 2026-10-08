@@ -38,6 +38,13 @@
 - `open case…` takes a case dump from disk, where the old file input took a `.m` file.
 
 ### Fixed
+- A phone held sideways (844x390) cleared the width-only breakpoint and dropped out of
+  phone mode, which also dropped `touch-action: none` and handed pinch back to the
+  browser as page zoom. The query now tests viewport height and a coarse pointer as
+  well, and `touch-action` belongs to the diagram rather than to a breakpoint.
+- Switching to the table or the sankey and back re-fitted the diagram, discarding the
+  pan and zoom. Re-fitting is now driven by the canvas actually changing size, so a
+  rotation refits and a tab switch does not.
 - Switching cases kept the previous `outname`, so the previous case's layout was
   applied to the new network. `applyCSV` skips bus ids it does not recognise, so this
   was silent: the overlapping ids were placed and the rest left where the spring
