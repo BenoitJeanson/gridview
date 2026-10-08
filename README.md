@@ -59,6 +59,21 @@ Everywhere else `save csv` hands you the file instead, and nothing else changes.
 disk, so you can study a case without committing it. Dropping a file on the window
 works too: a `.csv` is read as coordinates, a `.json` as a case.
 
+## On a phone
+
+A narrow screen gets the viewer. Study mode is the only mode — placing buses by
+fingertip is worse than not offering it — so the layout tools, the save controls and
+the study toggle itself are hidden, and the two side panels become tabs:
+**diagram / table / sankey**, one at a time at full width.
+
+Drag to pan, pinch to zoom, tap a branch to open or close it. There is no shift key,
+so the **tap** control in the bar switches between tapping a branch *open* and viewing
+it as a *contingency*. `⋯` reveals the colour, TLF and band-width controls that do not
+fit. The legend folds down to its heading; tap it to open.
+
+This is what makes a shared `?case=…&open=…&cont=…` link useful: it reproduces the
+same situation on a phone as on a laptop.
+
 ## Edit mode — placing buses
 
 Untick **study** to get here. Picking a case in the dropdown loads it. A spring

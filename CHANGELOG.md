@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- A phone viewer. Under 820px the page locks to study mode, the side panels become
+  diagram/table/sankey tabs, and the controls that do not fit move behind `⋯`. Touch
+  input works: drag pans, two fingers pinch-zoom, a tap opens a branch, and a `tap`
+  selector stands in for the shift key that a phone does not have. Branch hit targets
+  widen to a fingertip, and the legend folds to its heading.
 - `src/pf.js` and `src/linalg.js`: DC power flow, N−1 sweep and `eval_risk` in the
   browser, ported from `coordedit`'s `pf.py`. Dense Cholesky replaces `np.linalg.solve`.
 - `src/files.js`: the repo, a remembered folder (File System Access API) or a file the
@@ -16,6 +21,11 @@
 - GitHub Pages publication through Actions, gated on the test job.
 
 ### Changed
+- Mouse events became pointer events, so mouse, touch and pen run one code path.
+- Loading a case no longer computes a spring layout it is about to discard. The
+  coordinate file is fetched before the graph is built, so applying it — or falling
+  back to a computed layout — happens in one synchronous stretch instead of painting
+  a hairball first.
 - Picking a case in the dropdown loads it; the `load network` button is gone.
 - The page opens in study mode. `?study=0` opts out, mirroring `?sankey=0`.
 - One load path, `useDump`, shared by the case picker, `open case…` and drop. Dropping

@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>bus coordinate editor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>gridview</title>
 <style>
   * { box-sizing: border-box; }
   body { margin:0; font:13px/1.4 -apple-system, Helvetica, Arial, sans-serif; color:#222; }
@@ -84,6 +85,47 @@
   #legend .r { display:flex; align-items:center; gap:6px; white-space:nowrap; }
   #legend .r span { color:#0b0b0b; }
   #legend .n { color:#52514e; }
+
+  /* ---- phone: a viewer, locked to study mode ----
+     Editing is a desktop job — placing buses by fingertip is worse than not
+     offering it — so on a narrow screen the layout tools, the save controls and
+     the study toggle itself all go, and the two side panels become tabs. */
+  #tabs { display:none; }
+  .ph-only { display:none !important; }
+  @media (max-width: 820px) {
+    .ph-no { display:none !important; }
+    .ph-only { display:inline-flex !important; align-items:center; gap:4px; }
+    body:not(.more) .ph-more { display:none !important; }
+    body { display:flex; flex-direction:column; height:100dvh; }
+    #bar { padding:5px 6px; gap:5px; }
+    /* iOS zooms the page when a focused control is under 16px */
+    #bar select, #bar input, #bar button { font-size:16px; padding:4px 6px; }
+    /* the one line of state worth reading on a phone, so let it wrap rather
+       than be clipped in the middle of a word */
+    #status { font-size:11px; white-space:normal; max-height:none; }
+    #tabs { display:flex; background:#f2f2f2; border-bottom:1px solid #ccc; }
+    #tabs button { flex:1; padding:10px 4px; border:0; background:none;
+                   font:inherit; font-size:14px; color:#52514e;
+                   border-bottom:2px solid transparent; }
+    #tabs button.on { color:#0b0b0b; font-weight:600; background:#fff;
+                      border-bottom-color:#4a6fa5; }
+    /* stays a flex row: only one child is ever visible, so it fills.
+       display:block would drop #svg back to its intrinsic 300px. */
+    #main { flex:1; height:auto; min-height:0; }
+    #sa, #sk { width:100% !important; flex:1; }
+    .grip { display:none !important; }
+    body.table #svg, body.sankey #svg { display:none; }
+    #sabody table { font-size:12px; }
+    /* it floats over the whole page, so it belongs only to the diagram; and it
+       starts collapsed to its heading, which doubles as the "tap me" affordance */
+    body.table #legend, body.sankey #legend { display:none; }
+    #legend { font-size:10px; padding:5px 7px; left:6px; bottom:6px;
+              max-width:44vw; max-height:38vh; overflow:auto; cursor:pointer; }
+    body.legendoff #legend { max-height:2.2em; overflow:hidden; }
+    /* a fingertip is about 9 mm; the mouse-sized hit line is unusable */
+    #svg .hit { stroke-width:22px; }
+    #svg { touch-action:none; }
+  }
 </style>
 </head>
 <body>
@@ -91,42 +133,54 @@
 <script src="vendor/powsybl-sankey.js"></script>
 <div id="bar">
   <select id="case" style="max-width:230px"></select>
-  <button id="opencase" title="open a case dump from disk, or drop one anywhere">open case…</button>
-  <label>colour <select id="colorby">
+  <button class="ph-no" id="opencase" title="open a case dump from disk, or drop one anywhere">open case…</button>
+  <label class="ph-more">colour <select id="colorby">
     <option value="role">role</option>
     <option value="volt">voltage</option>
     <option value="group">group</option>
   </select></label>
-  <span class="sep"></span>
-  <button class="noStudy" id="fr">spring layout</button>
-  <button class="noStudy" id="circle">circle</button>
-  <button class="noStudy" id="rand">random</button>
-  <label><input type="checkbox" id="warm" checked> from current</label>
-  <span class="sep"></span>
-  <label><input type="checkbox" id="snap"> snap</label>
-  <input type="number" id="step" value="1" step="0.1" style="width:52px">
-  <button class="noStudy" id="normalize">fit to box</button>
-  <input type="number" id="boxsize" value="10" step="1" style="width:52px">
-  <button id="fit">fit view</button>
-  <span class="sep"></span>
-  <label><input type="checkbox" id="study" checked> <b>study</b></label>
-  <label class="st">w0 <input type="number" id="w0" value="0.3" step="0.1" style="width:48px"></label>
-  <label class="st">k <input type="number" id="wk" value="8" step="1" style="width:48px"></label>
-  <label class="st" title="largest bus radius in px">bus
+  <span class="sep ph-no"></span>
+  <button class="noStudy ph-no" id="fr">spring layout</button>
+  <button class="noStudy ph-no" id="circle">circle</button>
+  <button class="noStudy ph-no" id="rand">random</button>
+  <label class="ph-no"><input type="checkbox" id="warm" checked> from current</label>
+  <span class="sep ph-no"></span>
+  <label class="ph-no"><input type="checkbox" id="snap"> snap</label>
+  <input class="ph-no" type="number" id="step" value="1" step="0.1" style="width:52px">
+  <button class="noStudy ph-no" id="normalize">fit to box</button>
+  <input class="ph-no" type="number" id="boxsize" value="10" step="1" style="width:52px">
+  <button id="fit" class="ph-more">fit view</button>
+  <span class="sep ph-no"></span>
+  <label class="ph-no"><input type="checkbox" id="study" checked> <b>study</b></label>
+  <label class="st ph-more">w0 <input type="number" id="w0" value="0.3" step="0.1" style="width:48px"></label>
+  <label class="st ph-more">k <input type="number" id="wk" value="8" step="1" style="width:48px"></label>
+  <label class="st ph-more" title="largest bus radius in px">bus
     <input type="number" id="bus" value="14" step="1" style="width:48px"></label>
-  <label class="st" title="thermal limit factor — create_case's ratio, scales every p_max">TLF
+  <label class="st ph-more" title="thermal limit factor — create_case's ratio, scales every p_max">TLF
     <input type="number" id="tlf" value="1" step="0.1" min="0.1" style="width:52px"></label>
-  <button class="st" id="closeall">close all branches</button>
-  <label class="st"><input type="checkbox" id="tabshow" checked> table</label>
-  <label class="st"><input type="checkbox" id="skshow" checked> sankey</label>
-  <span class="sep"></span>
-  <input type="text" id="outname" placeholder="case57_IEEE" style="width:130px">
-  <button id="reload">reload csv</button>
-  <button id="save"><b>save csv</b></button>
-  <button id="dl">download</button>
-  <button id="pickdir" title="write save csv straight into a folder on disk">folder…</button>
-  <span id="dirname" class="n"></span>
-  <span id="coordinfo" class="n"></span>
+  <button class="st ph-more" id="closeall">close all branches</button>
+  <label class="st ph-no"><input type="checkbox" id="tabshow" checked> table</label>
+  <label class="st ph-no"><input type="checkbox" id="skshow" checked> sankey</label>
+  <span class="sep ph-no"></span>
+  <input class="ph-no" type="text" id="outname" placeholder="case57_IEEE" style="width:130px">
+  <button class="ph-no" id="reload">reload csv</button>
+  <button class="ph-no" id="save"><b>save csv</b></button>
+  <button class="ph-no" id="dl">download</button>
+  <button class="ph-no" id="pickdir" title="write save csv straight into a folder on disk">folder…</button>
+  <span id="dirname" class="n ph-no"></span>
+  <span id="coordinfo" class="n ph-no"></span>
+  <!-- phone only: no shift key, so tapping needs a mode; and a way to reach the
+       controls the narrow bar hides -->
+  <label id="tapmode" class="ph-only">tap <select id="tap">
+    <option value="open">opens</option>
+    <option value="cont">contingency</option>
+  </select></label>
+  <button id="more" class="ph-only" title="more controls">⋯</button>
+</div>
+<div id="tabs">
+  <button data-tab="diagram" class="on">diagram</button>
+  <button data-tab="table">table</button>
+  <button data-tab="sankey">sankey</button>
 </div>
 <div id="status">no network loaded</div>
 <div id="main">
@@ -244,7 +298,6 @@ function buildDump(dump, name) {
   $('colorby').options[1].disabled = !hasKV;
   $('colorby').value = hasKV ? 'volt' : 'group';
   sel.clear(); undoStack = [];
-  if (buses.length <= 600) layoutFR(false); else layoutRandom();
   build();
   say(`${name}: ${buses.length} buses, ${edges.length} branches, ` +
       `${S.groups.length} galvanic groups, ` +
@@ -670,18 +723,66 @@ function syncMode() {
 $('tabshow').onchange = () => { syncMode(); fitView(); };
 $('skshow').onchange = () => { syncMode(); fitView(); skRefresh(); };
 
+/* ---------------- phone ----------------
+   A narrow screen gets the viewer: study mode only, the two side panels as
+   tabs rather than columns, and the controls that do not fit behind "⋯".
+   The tabs drive the same two checkboxes the desktop panels use, so there is
+   one visibility mechanism rather than two. */
+const PHONE = matchMedia('(max-width: 820px)');
+let tab = 'diagram';
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('#tabs button')
+    .forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $('tabshow').checked = t === 'table';
+  $('skshow').checked = t === 'sankey';
+  syncMode();
+  // after the frame in which the panel actually takes its width, not before it
+  if (S.buses.length) requestAnimationFrame(() => fitView());
+  if (t === 'sankey') skRefresh();
+}
+document.querySelectorAll('#tabs button')
+  .forEach(b => b.onclick = () => setTab(b.dataset.tab));
+$('more').onclick = () => document.body.classList.toggle('more');
+/* on a phone the legend covers a quarter of the diagram, so it folds down to
+   its heading; on a desktop it is just a legend and a click means nothing */
+$('legend').onclick = () => {
+  if (PHONE.matches) document.body.classList.toggle('legendoff');
+};
+
+function applyPhone() {
+  document.body.classList.toggle('phone', PHONE.matches);
+  document.body.classList.toggle('legendoff', PHONE.matches);
+  if (PHONE.matches) {
+    $('study').checked = true;        // the only mode offered here
+    setTab(tab);
+  } else {                            // back to a wide window: both panels return
+    $('tabshow').checked = $('skshow').checked = true;
+    syncMode();
+    if (S.buses.length) fitView();
+    skRefresh();
+  }
+}
+PHONE.addEventListener('change', applyPhone);
+
+let refit;
+window.addEventListener('resize', () => {           // rotation, or a resized window
+  clearTimeout(refit);
+  refit = setTimeout(() => { if (S.buses.length) { fitView(); skRefresh(); } }, 150);
+});
+
 /* ---------------- panel resize / hide ---------------- */
 const MINPANEL = 200, MINCANVAS = 260;
 let grip = null;
 document.querySelectorAll('.grip').forEach(g =>
-  g.addEventListener('mousedown', ev => {
+  g.addEventListener('pointerdown', ev => {
     const el = $(g.dataset.for);
     grip = { g, el, x0: ev.clientX, w0: el.getBoundingClientRect().width };
     g.classList.add('drag');
     document.body.style.userSelect = 'none';
     ev.preventDefault();
   }));
-window.addEventListener('mousemove', ev => {
+window.addEventListener('pointermove', ev => {
   if (!grip) return;
   const other = grip.g.dataset.for === 'sa' ? $('sk') : $('sa');
   const otherW = other.offsetParent ? other.getBoundingClientRect().width : 0;
@@ -689,7 +790,7 @@ window.addEventListener('mousemove', ev => {
   grip.el.style.width = Math.max(MINPANEL, Math.min(max, grip.w0 + grip.x0 - ev.clientX)) + 'px';
   draw();
 });
-window.addEventListener('mouseup', () => {
+window.addEventListener('pointerup', () => {
   if (!grip) return;
   grip.g.classList.remove('drag');
   document.body.style.userSelect = '';
@@ -717,12 +818,33 @@ function pushUndo() {
   undoStack.push(S.buses.map(b => [b.x,b.y]));
   if (undoStack.length > 100) undoStack.shift();
 }
-svg.addEventListener('mousedown', ev => {
+/* Pointers, not mice: one code path for mouse, touch and pen, plus a pinch
+   that two fingers drive. `pointers` is every finger currently down; while
+   there are two of them the one-finger gestures are suspended, and they stay
+   suspended until every finger lifts so that releasing one does not make the
+   other jump into a pan. */
+const pointers = new Map();
+let pinch = null, pinchLock = false;
+const tapCont = () => $('tap').value === 'cont';   // phone stand-in for shift
+
+svg.addEventListener('pointerdown', ev => {
+  pointers.set(ev.pointerId, pt(ev));
+  if (pointers.size === 2) {
+    drag = null; pinchLock = true;
+    $('band').setAttribute('visibility', 'hidden');
+    const [a, b] = [...pointers.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+              cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2,
+              k: view.k, tx: view.tx, ty: view.ty };
+    ev.preventDefault();
+    return;
+  }
+  if (pointers.size > 1 || pinchLock) return;
   const p = pt(ev);
   const ek = ev.target.dataset ? ev.target.dataset.ek : null;
   if (ek) {
     ev.preventDefault();
-    if (ev.shiftKey) {                        // shift+click: view it as a contingency
+    if (ev.shiftKey || tapCont()) {           // shift+click: view it as a contingency
       if (S.open.has(ek)) { say(`${ek} is already open in the topology`); return; }
       S.cont.has(ek) ? S.cont.delete(ek) : S.cont.add(ek);
       markActiveRows(); solve();
@@ -750,7 +872,19 @@ svg.addEventListener('mousedown', ev => {
   }
   ev.preventDefault();
 });
-window.addEventListener('mousemove', ev => {
+window.addEventListener('pointermove', ev => {
+  if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, pt(ev));
+  if (pinch && pointers.size >= 2) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    // hold the world point under the starting centre, and follow the centre
+    const wx = (pinch.cx - pinch.tx) / pinch.k, wy = -(pinch.cy - pinch.ty) / pinch.k;
+    view.k = pinch.k * (d / pinch.d);
+    view.tx = cx - view.k * wx; view.ty = cy + view.k * wy;
+    draw();
+    return;
+  }
   if (!drag) return;
   const p = pt(ev);
   if (drag.type === 'node') {
@@ -771,7 +905,14 @@ window.addEventListener('mousemove', ev => {
     r.setAttribute('width',Math.abs(p.x-drag.x0)); r.setAttribute('height',Math.abs(p.y-drag.y0));
   }
 });
-window.addEventListener('mouseup', ev => {
+function endPointer(ev) {
+  pointers.delete(ev.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (pointers.size === 0) pinchLock = false;
+}
+window.addEventListener('pointercancel', ev => { endPointer(ev); drag = null; });
+window.addEventListener('pointerup', ev => {
+  endPointer(ev);
   const p = pt(ev);
   if (drag && drag.type === 'band') {
     const x0 = Math.min(drag.x0,p.x), x1 = Math.max(drag.x0,p.x);
@@ -834,22 +975,44 @@ let CASES = [];
    them. It is left alone when the same case is re-loaded, so a deliberate
    variant name (case118-NH) survives pressing load again. */
 async function useDump(dump, name) {
-  const prev = S.name;
+  const prev = S.name, cur = $('outname').value.trim();
+  const out = (name !== prev || !cur) ? guess(name) : cur;
+  /* Fetched before the graph is built, so that applying it — or falling back
+     to a spring layout — runs in one synchronous stretch. Laying out first and
+     overwriting afterwards gave the browser a frame to paint the spring layout
+     that is about to be discarded, which is the hairball-then-snap on load. */
+  const got = out ? await files.readCoord(out) : null;
   buildDump(dump, name);
-  if (name !== prev || !$('outname').value) $('outname').value = guess(name);
-  await tryCoords();
+  $('outname').value = out;
+  placeBuses(got, out);
   solve();
   await runSA();
+}
+
+/* The saved layout if there is one, a computed one if there is not. */
+function placeBuses(got, out) {
+  if (got) {
+    const n = applyCSV(got.text);
+    say(`${S.name}: loaded ${n} coords from ${got.from}${out}.csv`);
+  } else {
+    if (S.buses.length <= 600) layoutFR(false); else layoutRandom();
+    say(`${S.name}: no ${out}.csv — spring layout`);
+  }
+  fitView();
 }
 
 async function loadCase(name) {
   const c = CASES.find(x => x.name === name);
   await useDump(await files.fetchJSON('cases/' + (c ? c.file : name + '.json')), name);
 }
+/* reload csv: re-read the file for whatever name is in the box, onto the graph
+   already on screen. Unlike a case load this one keeps the current layout when
+   there is no file — there is nothing to fall back to that the user has not
+   already got. */
 async function tryCoords() {
   const out = $('outname').value.trim(); if (!out) return;
   const got = await files.readCoord(out);
-  if (!got) { say(S.name + ': no existing ' + out + '.csv — using layout'); return; }
+  if (!got) { say(S.name + ': no existing ' + out + '.csv — keeping this layout'); return; }
   const n = applyCSV(got.text); fitView();
   say(`${S.name}: loaded ${n} coords from ${got.from}${out}.csv`);
 }
@@ -955,6 +1118,7 @@ document.addEventListener('drop', e => {
   /* the network first: everything below only decorates the chrome, and none of
      it may delay — or, if storage is unavailable, prevent — the case loading */
   if (pref) await loadCase(pref).catch(e => say('ERROR ' + e.message));
+  applyPhone();
   showDir().catch(() => {});
   files.listCoords().then(co => {
     $('coordinfo').textContent =
