@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- Per-case default TLF, recorded in the dump by `tools/enrich_dump.py`: 1.0, or
+  whatever `create_case` scales the case by itself (case118 at 1.5). The field follows
+  the case on switch, so another case's scaling cannot be left behind. `?tlf=`
+  overrides it for the case in the link.
 - A phone viewer. Under 820px the page locks to study mode, the side panels become
   diagram/table/sankey tabs, and the controls that do not fit move behind `⋯`. Touch
   input works: drag pans, two fingers pinch-zoom, a tap opens a branch, and a `tap`

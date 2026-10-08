@@ -32,6 +32,14 @@ PGLIB = sorted(glob.glob(_pat))[-1] if glob.glob(_pat) else None
 MFILE = {'case14': 'case14_ieee', 'case57_ieee': 'case57_ieee',
          'case118': 'case118_ieee'}
 
+# The thermal-limit factor the app should open with. Limits are dumped UNSCALED
+# (dump_case.jl is run as `case118:1.0` to defeat create_case's built-in 1.5x),
+# so the TLF field is the only place the factor is applied and its default has
+# to put back whatever create_case would have used for that case. 1.0 unless
+# create_case scales the case itself, which today is case118 at 1.5
+# (PlayUtils.jl:77-82).
+TLF = {'case118': 1.5}
+
 
 def busnum(label):
     """Dump labels are usually the bus number; case14 uses letters (A = 1)."""
@@ -90,19 +98,21 @@ def enrich(name):
             name, len(missing), ', '.join(sorted(missing)[:5]))
 
     d['display'] = {'source': 'pglib_opf_%s.m' % stem, 'buses': buses, 'edges': edges}
+    d['tlf'] = TLF.get(name, 1.0)
     with open(path, 'w') as f:
         json.dump(d, f, indent=1, sort_keys=True)
     kvs = sorted({b['kv'] for b in buses.values()})
-    return '%-12s %3d buses %3d edges  baseKV %s  %d transformer(s)' % (
+    return '%-12s %3d buses %3d edges  baseKV %-18s  %d transformer(s)  TLF %g' % (
         name, len(buses), len(edges),
         '/'.join('%g' % v for v in kvs) if len(kvs) > 1 else 'none (placeholder)',
-        sum(e['xf'] for e in edges.values()))
+        sum(e['xf'] for e in edges.values()), d['tlf'])
 
 
 if __name__ == '__main__':
     if not PGLIB:
         sys.exit('no pglib-opf artifact found under ~/.julia/artifacts/')
     names = sys.argv[1:] or sorted(
-        os.path.basename(p)[:-5] for p in glob.glob(os.path.join(CASEDIR, '*.json')))
+        os.path.basename(p)[:-5] for p in glob.glob(os.path.join(CASEDIR, '*.json'))
+        if os.path.basename(p) != 'index.json')
     for n in names:
         print(enrich(n))

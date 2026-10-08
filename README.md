@@ -35,7 +35,7 @@ python3 -m http.server 8123      # then http://localhost:8123
 ```
 
 The page opens in study mode. The URL takes
-`?case=case118&study=0&open=24-25,35-36&cont=8-9&sankey=0` to reproduce
+`?case=case118&study=0&open=24-25,35-36&cont=8-9&sankey=0&tlf=1.5` to reproduce
 a situation, which is handy for sharing or for a screenshot — for instance
 [case57 with two branches out and 8-9 as the contingency](https://benoitjeanson.github.io/gridview/?case=case57_ieee&study=1&open=24-25,35-36&cont=8-9).
 
@@ -128,7 +128,10 @@ In it the layout freezes and the network becomes a flow diagram.
   Injections are the ones the solve actually used, so a shed bus collapses to the
   minimum size
 - the placement grid is hidden — it is furniture for laying out, not for reading flows
-- **TLF** scales every `p_max`, i.e. `create_case`'s `ratio`
+- **TLF** scales every `p_max`, i.e. `create_case`'s `ratio`. Limits are dumped
+  unscaled, so the field opens at whatever `create_case` would itself have applied to
+  that case — 1.5 for case118, 1.0 for the others — and follows the case when you
+  switch. `?tlf=` overrides it for the case in the link
 
 ### Security analysis panel
 
@@ -177,6 +180,9 @@ python3 tools/enrich_dump.py
 slack — everything the solver needs. Limits are dumped *unscaled* — pass `case118:1.0`
 to defeat `create_case`'s built-in 1.5× — so the TLF field is the only place the
 thermal-limit factor is applied and you type the number you write in your logs.
+Because of that, `enrich_dump.py` also records the factor the field should *open* at,
+from a table in that script: 1.0 unless `create_case` scales the case itself, which
+today is case118 at 1.5. A new case that `create_case` scales needs a line there.
 
 `enrich_dump.py` adds what the *picture* needs and TNROpt's graph does not carry:
 `baseKV` per bus, the tap ratio that marks a branch as a transformer, and the gen/load

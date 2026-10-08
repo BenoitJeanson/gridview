@@ -250,6 +250,7 @@ let sel = new Set(), undoStack = [];
 let els = { grid:null, edges:[], hits:[], arrows:[], flabs:[], nodes:[], labels:[] };
 const studying = () => $('study').checked;
 const S0open = [], S0cont = [];            // ?open=…&cont=… for a preset situation
+let S0tlf = null;                          // ?tlf=… overrides the case's own, once
 const ekey = e => Math.min(e.f,e.t) + '-' + Math.max(e.f,e.t);
 
 const say = m => $('status').textContent = m;
@@ -1008,6 +1009,14 @@ async function useDump(dump, name) {
   const got = out ? await files.readCoord(out) : null;
   buildDump(dump, name);
   $('outname').value = out;
+  /* The dump carries the factor create_case would have applied, because the
+     limits in it are unscaled — 1.5 for case118, 1.0 elsewhere. Like outname it
+     follows the case, so switching cases cannot leave another case's scaling
+     behind. A ?tlf= in the URL wins, but only for the case it was given with. */
+  if (name !== prev) {
+    $('tlf').value = S0tlf !== null ? S0tlf : (dump.tlf ?? 1);
+    S0tlf = null;
+  }
   placeBuses(got, out);
   solve();
   await runSA();
@@ -1135,6 +1144,7 @@ document.addEventListener('drop', e => {
   syncMode();
   if (q.get('open')) for (const k of q.get('open').split(',')) S0open.push(k);
   if (q.get('cont')) for (const k of q.get('cont').split(',')) S0cont.push(k);
+  if (q.get('tlf') && isFinite(+q.get('tlf'))) S0tlf = +q.get('tlf');
   const want = q.get('case');
   const pref = (CASES.find(c => c.name === want) || CASES.find(c => c.name === 'case57_ieee')
                 || CASES[0] || {}).name;
