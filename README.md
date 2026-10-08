@@ -1,5 +1,7 @@
 # gridview — an interactive DC power-flow bench for TNROpt cases
 
+**[Open it →](https://benoitjeanson.github.io/gridview/)**
+
 A single-page browser tool for laying out a transmission network by hand and then
 studying it: open branches, watch the DC flows and overloads redraw, read an N−1
 security analysis of the topology you have built, and see the same situation as a
@@ -22,8 +24,8 @@ reads, so a layout drawn here is immediately what `draw`/`calcanddraw` renders.
 
 ## Running
 
-Published on GitHub Pages — open the link and you have the committed cases and
-layouts, with nothing installed.
+Published at **<https://benoitjeanson.github.io/gridview/>** — open it and you have
+the committed cases and layouts, with nothing installed.
 
 Locally, any static file server will do. It cannot be opened as a `file://` URL,
 because the page fetches its cases:
@@ -33,7 +35,8 @@ python3 -m http.server 8123      # then http://localhost:8123
 ```
 
 The URL takes `?case=case118&study=1&open=24-25,35-36&cont=8-9&sankey=0` to reproduce
-a situation, which is handy for sharing or for a screenshot.
+a situation, which is handy for sharing or for a screenshot — for instance
+[case57 with two branches out and 8-9 as the contingency](https://benoitjeanson.github.io/gridview/?case=case57_ieee&study=1&open=24-25,35-36&cont=8-9).
 
 ## Where the data comes from, and where it goes
 
